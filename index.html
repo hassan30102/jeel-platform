@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="referrer" content="no-referrer">
+<title>منصة جيل الرقمية لدعم التعلم</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@600;800&family=Tajawal:wght@400;500;700&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com/3.4.17"></script>
+<style>
+/* ===== 1) الهوية البصرية: متغيرات الألوان (فاتح / داكن) ===== */
+:root{
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+  --bg:#F3F8FD; --surface:#FFFFFF; --ink:#0A2540; --muted:#52677F; --line:#D6E4F2;
+  --blue:#1565C0; --blue-deep:#0B2E5C; --cyan:#29B6F6; --gold:#C8962E; --gold-soft:#FBF1D9;
+  --shadow:0 6px 24px rgba(11,46,92,.10);
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#071426; --surface:#0E2340; --ink:#E8F1FB; --muted:#9FB6D1; --line:#1E3A5F;
+    --blue:#64B5F6; --blue-deep:#06172E; --gold:#E3B454; --gold-soft:#2A2312;
+    --shadow:0 6px 24px rgba(0,0,0,.45);
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#071426; --surface:#0E2340; --ink:#E8F1FB; --muted:#9FB6D1; --line:#1E3A5F;
+  --blue:#64B5F6; --blue-deep:#06172E; --gold:#E3B454; --gold-soft:#2A2312;
+  --shadow:0 6px 24px rgba(0,0,0,.45);
+}
+html{scroll-behavior:smooth;scroll-padding-top:calc(76px + env(safe-area-inset-top,0px))}
+body{font-family:'Tajawal',system-ui,sans-serif;background:var(--bg);color:var(--ink);margin:0;line-height:1.8}
+h1,h2,h3,.display{font-family:'Cairo','Tajawal',sans-serif}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:18px;box-shadow:var(--shadow)}
+.muted{color:var(--muted)}
+:focus-visible{outline:3px solid var(--cyan);outline-offset:2px}
+
+/* ===== 2) الشريط العلوي ===== */
+.nav{position:sticky;top:env(safe-area-inset-top,0px);z-index:40;background:color-mix(in srgb,var(--surface) 92%,transparent);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+.nav a.link{padding:.4rem .9rem;border-radius:999px;font-weight:700;color:var(--muted);transition:.2s}
+.nav a.link:hover{background:var(--gold-soft);color:var(--ink)}
+
+/* ===== 3) الواجهة الترحيبية (Hero): زخرفة هندسية عمانية + سراج متوهج ===== */
+.hero{background:radial-gradient(1200px 500px at 85% -10%,#1E88E5 0%,transparent 60%),linear-gradient(160deg,#0B2E5C,#0A1F44 70%);color:#fff;position:relative;overflow:hidden}
+.hero::before{content:"";position:absolute;inset:0;opacity:.12;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='64' height='64'%3E%3Cpath d='M32 4l8 20 20 8-20 8-8 20-8-20-20-8 20-8z' fill='none' stroke='white' stroke-width='1.2'/%3E%3C/svg%3E")}
+.glow{animation:glow 3.2s ease-in-out infinite alternate}
+@keyframes glow{from{filter:drop-shadow(0 0 8px rgba(255,210,100,.5))}to{filter:drop-shadow(0 0 26px rgba(255,210,100,.95))}}
+.btn-gold{background:var(--gold);color:#1B1403;font-weight:800;border-radius:999px;padding:.85rem 2rem;transition:.2s;box-shadow:0 6px 18px rgba(200,150,46,.4)}
+.btn-gold:hover{transform:translateY(-2px)}
+.btn-blue{background:var(--blue);color:#fff;font-weight:800;border-radius:12px;padding:.85rem 1.5rem;transition:.2s}
+.btn-blue:hover{filter:brightness(1.1)}
+.btn-blue:disabled{opacity:.6;cursor:wait}
+
+/* ===== 4) المعرض ===== */
+.chip{padding:.45rem 1.2rem;border-radius:999px;border:1px solid var(--line);background:var(--surface);font-weight:700;color:var(--muted);cursor:pointer;transition:.2s}
+.chip[aria-pressed="true"]{background:var(--blue-deep);color:#fff;border-color:var(--blue-deep)}
+.thumb{height:160px;border-radius:14px 14px 0 0;display:flex;align-items:center;justify-content:center;font-size:3rem}
+.badge{font-size:.8rem;font-weight:700;padding:.1rem .7rem;border-radius:999px;background:var(--gold-soft);color:var(--gold)}
+.work{transition:transform .2s, box-shadow .2s}
+.work:hover{transform:translateY(-4px)}
+
+/* ===== 5) النموذج ===== */
+.field label{display:block;font-weight:700;margin-bottom:.3rem}
+.field input,.field select{width:100%;padding:.75rem 1rem;border-radius:12px;border:1px solid var(--line);background:var(--bg);color:var(--ink);font:inherit}
+.field input:focus,.field select:focus{border-color:var(--blue);outline:none;box-shadow:0 0 0 3px color-mix(in srgb,var(--cyan) 35%,transparent)}
+#toast{position:fixed;inset-inline:1rem;bottom:calc(1rem + env(safe-area-inset-bottom,0px));max-width:420px;margin-inline:auto;z-index:60;transform:translateY(160%);transition:transform .35s}
+#toast.show{transform:none}
+footer{background:var(--blue-deep);color:#D6E6F8}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
+</style>
+</head>
+<body>
+
+<!-- ===== الشريط العلوي (Navbar) ===== -->
+<header class="nav">
+  <div class="max-w-6xl mx-auto px-4 h-[68px] flex items-center justify-between gap-3">
+    <a href="#home" class="flex items-center gap-2 display font-extrabold text-lg" style="color:var(--blue)">
+      <svg width="30" height="30" viewBox="0 0 48 48" aria-hidden="true"><path d="M24 4c4 6 7 9 7 14a7 7 0 0 1-14 0c0-5 3-8 7-14z" fill="#C8962E"/><path d="M8 30h32l-4 10a4 4 0 0 1-4 3H16a4 4 0 0 1-4-3z" fill="#1565C0"/><path d="M40 30c4 0 6 1 6 3" stroke="#1565C0" stroke-width="3" fill="none" stroke-linecap="round"/></svg>
+      منصة جيل
+    </a>
+    <nav class="flex items-center gap-1 text-sm sm:text-base overflow-x-auto" aria-label="التنقل الرئيسي">
+      <a class="link" href="#home">الرئيسية</a>
+      <a class="link whitespace-nowrap" href="#gallery">معرض الأبحاث</a>
+      <a class="link whitespace-nowrap" href="#submit">شارك عملك</a>
+      <a class="link whitespace-nowrap" href="#about">عن المبادرة</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+<!-- ===== القسم الأول: Hero ===== -->
+<section id="home" class="hero">
+  <div class="relative max-w-6xl mx-auto px-4 py-16 md:py-24 grid md:grid-cols-[1.4fr_1fr] gap-10 items-center">
+    <div>
+      <span class="inline-block px-4 py-1 rounded-full text-sm font-bold" style="background:rgba(200,150,46,.2);color:#F6D98B;border:1px solid rgba(246,217,139,.4)">مسابقة سراج عمان · مجتمع التعلم والبحث العلمي الرقمي</span>
+      <h1 class="display font-extrabold text-4xl md:text-5xl leading-tight mt-5">منصة جيل الرقمية لدعم التعلم</h1>
+      <p class="mt-5 text-lg md:text-xl max-w-xl" style="color:#CFE3F7">افتح الموسوعة العمانية، اختر موضوعاً يلفت انتباهك، وحوّله مع فريقك إلى إنفوجرافيك أو فيديو أو خريطة تفاعلية يفهمها زملاؤك في دقيقة.</p>
+      <div class="mt-8 flex flex-wrap gap-3 items-center">
+        <a href="#submit" class="btn-gold inline-block">ارفع مشروعك الآن</a>
+        <a href="#gallery" class="px-6 py-3 rounded-full font-bold border border-white/40 hover:bg-white/10 transition">تصفّح أعمال الزملاء</a>
+      </div>
+    </div>
+    <!-- السراج: العنصر المميز في الصفحة -->
+    <div class="flex justify-center" aria-hidden="true">
+      <svg class="glow" width="240" height="240" viewBox="0 0 120 120">
+        <path d="M60 8c9 13 16 20 16 31a16 16 0 0 1-32 0c0-11 7-18 16-31z" fill="#FFD36B"/>
+        <path d="M60 24c4 6 7 9 7 14a7 7 0 0 1-14 0c0-5 3-8 7-14z" fill="#FFF3C9"/>
+        <path d="M22 70h76l-9 24a8 8 0 0 1-8 6H39a8 8 0 0 1-8-6z" fill="#C8962E"/>
+        <path d="M98 70c10 0 14 3 14 7" stroke="#C8962E" stroke-width="5" fill="none" stroke-linecap="round"/>
+        <rect x="18" y="62" width="84" height="9" rx="4.5" fill="#E3B454"/>
+      </svg>
+    </div>
+  </div>
+</section>
+
+<!-- ===== القسم الثاني: معرض الأعمال ===== -->
+<section id="gallery" class="max-w-6xl mx-auto px-4 py-16">
+  <h2 class="display font-extrabold text-3xl">معرض الشواهد والأعمال</h2>
+  <p class="muted mt-1">أعمال فرق بحثية طلابية أعادت صياغة معرفة الموسوعة العمانية بصرياً.</p>
+  <div class="flex flex-wrap gap-2 my-6" id="filters" role="group" aria-label="تصفية الأعمال"></div>
+  <div id="grid" class="grid sm:grid-cols-2 lg:grid-cols-3 gap-6" aria-live="polite"></div>
+</section>
+
+<!-- ===== القسم الثالث: نموذج رفع الأعمال ===== -->
+<section id="submit" class="py-16" style="background:linear-gradient(180deg,transparent,color-mix(in srgb,var(--cyan) 10%,transparent))">
+  <div class="max-w-2xl mx-auto px-4">
+    <h2 class="display font-extrabold text-3xl">شارك عملك</h2>
+    <p class="muted mt-1">ارفع عملك على جوجل درايف أو ون درايف، ثم الصق الرابط هنا.</p>
+    <form id="workForm" class="card p-6 mt-6 grid gap-5" novalidate>
+      <div class="field"><label for="name">اسم الطالب / الفريق</label><input id="name" name="studentName" required placeholder="مثال: فريق رواد الفلج"></div>
+      <div class="field"><label for="grade">الصف الدراسي</label>
+        <select id="grade" name="grade" required><option value="">اختر الصف</option><option>الصف العاشر</option><option>الصف الحادي عشر</option><option>الصف الثاني عشر</option></select></div>
+      <div class="field"><label for="topic">عنوان البحث من الموسوعة العمانية</label><input id="topic" name="encyclopediaTopic" required placeholder="مثال: الأفلاج في سلطنة عُمان"></div>
+      <div class="field"><label for="type">نوع العمل المرفق</label>
+        <select id="type" name="workType" required><option value="">اختر النوع</option><option>إنفوجرافيك</option><option>فيديو</option><option>خريطة</option><option>تقرير تقييم</option></select></div>
+      <div class="field"><label for="link">رابط العمل السحابي</label><input id="link" name="cloudLink" type="url" required dir="ltr" placeholder="https://drive.google.com/..." style="text-align:right"></div>
+      <p id="formError" class="text-sm font-bold hidden" style="color:#D93636" role="alert"></p>
+      <button id="submitBtn" class="btn-blue" type="submit">أرسل العمل</button>
+    </form>
+  </div>
+</section>
+
+<!-- عن المبادرة -->
+<section id="about" class="max-w-6xl mx-auto px-4 py-16">
+  <h2 class="display font-extrabold text-3xl">عن المبادرة</h2>
+  <div class="grid md:grid-cols-3 gap-6 mt-6">
+    <div class="card p-6"><h3 class="display font-extrabold text-xl" style="color:var(--blue)">نقرأ</h3><p class="muted mt-2">يختار كل فريق مادة من الموسوعة العمانية ويفهمها بعمق.</p></div>
+    <div class="card p-6"><h3 class="display font-extrabold text-xl" style="color:var(--blue)">نبسّط</h3><p class="muted mt-2">يحوّل الفريق المعلومة المعقدة إلى مادة بصرية واضحة.</p></div>
+    <div class="card p-6"><h3 class="display font-extrabold text-xl" style="color:var(--blue)">ننشر</h3><p class="muted mt-2">تُجمع الأعمال سحابياً وتُعرض هنا ليستفيد منها الجميع.</p></div>
+  </div>
+</section>
+</main>
+
+<!-- ===== القسم الرابع: الفوتر ===== -->
+<footer>
+  <div class="max-w-6xl mx-auto px-4 py-10 grid md:grid-cols-3 gap-6 items-center">
+    <div><p class="display font-extrabold text-lg text-white">مسابقة سراج عمان</p><p class="text-sm">توظيف الموسوعة العمانية في التعلم</p></div>
+    <p class="md:text-center">إشراف: الأستاذ / علي السماخي</p>
+    <p class="md:text-left">عدد الزيارات: <strong id="visits" class="display text-xl" style="color:#F6D98B">0</strong></p>
+  </div>
+</footer>
+
+<div id="toast" class="card p-4 font-bold" role="status"></div>
+
+<script>
+/* ===== بيانات المعرض: تُجلب مباشرة من /api/works، وتظهر العينات فقط إذا كان المعرض فارغاً ===== */
+const SAMPLES = [
+  {title:"الأفلاج العمانية: هندسة الماء عبر القرون", team:"فريق رواد الفلج", grade:"الصف العاشر", type:"infographic"},
+  {title:"رحلة اللبان من ظفار إلى العالم", team:"فريق عبق ظفار", grade:"الصف الحادي عشر", type:"video"},
+  {title:"خريطة القلاع والحصون العمانية", team:"فريق حُرّاس التاريخ", grade:"الصف العاشر", type:"map"},
+  {title:"السفينة العمانية وطريق التجارة البحرية", team:"فريق نواخذة المستقبل", grade:"الصف الحادي عشر", type:"report"}
+];
+const TYPES = {all:"الكل", infographic:"إنفوجرافيك", video:"مقاطع فيديو", map:"خرائط تفاعلية", report:"تقارير تقييم"};
+const TYPE_LABEL = {infographic:"إنفوجرافيك", video:"مقطع فيديو", map:"خريطة تفاعلية", report:"تقرير تقييم"};
+const LOOK = {infographic:["📊","#1E88E5"], video:["🎬","#C8962E"], map:["🗺️","#2E8B6A"], report:["📝","#0B2E5C"]};
+// للمعلم: نقرأ المفتاح مرة واحدة ثم نحذفه من شريط العنوان دون أي تغيير بصري.
+const adminParams = new URLSearchParams(location.search);
+const adminFromUrl = adminParams.get("admin");
+if (adminFromUrl) {
+  try { sessionStorage.setItem("jeel_admin", adminFromUrl); } catch (_) {}
+  adminParams.delete("admin");
+  const cleanQuery = adminParams.toString();
+  history.replaceState(null, "", location.pathname + (cleanQuery ? "?" + cleanQuery : "") + location.hash);
+}
+let ADMIN_KEY = adminFromUrl;
+try { ADMIN_KEY = ADMIN_KEY || sessionStorage.getItem("jeel_admin"); } catch (_) {}
+let WORKS = SAMPLES, active = "all";
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+
+/* ===== جلب الأعمال (وتحديث تلقائي كل 30 ثانية) ===== */
+async function loadWorks(){
+  try {
+    const r = await fetch("/api/works"); if (!r.ok) throw 0;
+    const d = await r.json(); WORKS = d.length ? d : SAMPLES;
+  } catch (_) { WORKS = SAMPLES; }
+  renderFilters(); renderGrid();
+}
+
+/* ===== عرض أزرار التصفية والبطاقات (كل عمل يذهب تلقائياً لقسمه حسب نوعه) ===== */
+function renderFilters(){
+  const box = document.getElementById("filters");
+  box.innerHTML = Object.entries(TYPES).map(([k,v]) => {
+    const n = k==="all" ? WORKS.length : WORKS.filter(w => w.type===k).length;
+    return `<button class="chip" data-k="${k}" aria-pressed="${k===active}">${v} (${n})</button>`;
+  }).join("");
+  box.querySelectorAll("button").forEach(b => b.onclick = () => { active = b.dataset.k; renderFilters(); renderGrid(); });
+}
+function renderGrid(){
+  const list = WORKS.filter(w => active==="all" || w.type===active);
+  document.getElementById("grid").innerHTML = list.length ? list.map(w => {
+    const [icon, tone] = LOOK[w.type] || LOOK.report;
+    const safe = typeof w.link==="string" && w.link.startsWith("https://");
+    const open = safe ? `<a class="font-bold text-sm mt-3 inline-block" style="color:var(--blue)" href="${esc(w.link)}" target="_blank" rel="noopener noreferrer">افتح العمل</a>` : "";
+    const del = (ADMIN_KEY && w.id) ? `<button class="text-sm font-bold mr-4" style="color:#D93636" onclick="delWork('${esc(w.id)}')">حذف</button>` : "";
+    return `<article class="card work overflow-hidden">
+      <div class="thumb" style="background:linear-gradient(135deg,${tone},color-mix(in srgb,${tone} 55%,#000))" aria-hidden="true">${icon}</div>
+      <div class="p-5"><span class="badge">${TYPE_LABEL[w.type] || ""}</span>
+        <h3 class="display font-extrabold text-lg mt-2 leading-snug">${esc(w.title)}</h3>
+        <p class="muted text-sm mt-1">${esc(w.team)} · ${esc(w.grade)}</p>${open}${del}</div></article>`;
+  }).join("") : `<p class="muted">لا توجد أعمال في هذا القسم بعد. كن أول من يشارك.</p>`;
+}
+async function delWork(id){
+  if (!confirm("حذف هذا العمل من المعرض؟")) return;
+  const r = await fetch("/api/works?id=" + encodeURIComponent(id), {method:"DELETE", headers:{"x-admin-key": ADMIN_KEY}});
+  toast(r.ok ? "تم الحذف" : "تعذّر الحذف، تحقق من المفتاح"); loadWorks();
+}
+
+/* ===== رسالة تأكيد منبثقة ===== */
+function toast(msg){
+  const t = document.getElementById("toast"); t.textContent = msg; t.classList.add("show");
+  setTimeout(() => t.classList.remove("show"), 3800);
+}
+
+/* =====================================================================
+   إرسال النموذج سحابياً
+   ---------------------------------------------------------------------
+   ضع رابط الـ Webhook هنا (Power Automate "When an HTTP request is received"
+   أو Cloudflare Worker). إذا تُرك فارغاً يعمل النموذج في وضع التجربة فقط.
+   ===================================================================== */
+const WEBHOOK_URL = "/api/works"; // نقطة الاستقبال في Cloudflare Pages Function (لنسخة Power Automate أضف FORWARD_URL في إعدادات Cloudflare)
+
+document.getElementById("workForm").addEventListener("submit", async (e) => {
+  e.preventDefault();                                   // منع إعادة تحميل الصفحة
+  const form = e.target, err = document.getElementById("formError"), btn = document.getElementById("submitBtn");
+  err.classList.add("hidden");
+
+  // 1) تحويل بيانات النموذج إلى كائن JSON
+  const payload = Object.fromEntries(new FormData(form).entries());
+  payload.submittedAt = new Date().toISOString();
+
+  // 2) تحقق بسيط
+  if (Object.values(payload).some(v => !String(v).trim())) {
+    err.textContent = "أكمل جميع الحقول قبل الإرسال."; err.classList.remove("hidden"); return;
+  }
+  if (!/^https?:\/\//i.test(payload.cloudLink)) {
+    err.textContent = "الصق رابطاً صحيحاً يبدأ بـ https://"; err.classList.remove("hidden"); return;
+  }
+
+  btn.disabled = true; btn.textContent = "جارٍ الإرسال...";
+  try {
+    if (WEBHOOK_URL) {
+      // 3) طلب POST إلى الـ Webhook
+      const res = await fetch(WEBHOOK_URL, {
+        method: "POST",
+        headers: {"Content-Type":"application/json"},
+        body: JSON.stringify(payload)
+      });
+      if (!res.ok) { const j = await res.json().catch(() => ({})); throw new Error(j.error || ("HTTP " + res.status)); }
+    } else {
+      console.log("وضع التجربة - البيانات الجاهزة للإرسال:", JSON.stringify(payload, null, 2));
+      await new Promise(r => setTimeout(r, 700));
+    }
+    toast("وصل عملك وظهر في المعرض. شكراً لمشاركتك.");
+    form.reset();
+    await loadWorks(); active = "all"; renderFilters(); renderGrid();
+    document.getElementById("gallery").scrollIntoView();
+  } catch (error) {
+    console.error(error);
+    err.textContent = error.message && !/^HTTP|Failed|fetch/i.test(error.message) ? error.message : "تعذّر الإرسال. تحقق من الاتصال وحاول مرة أخرى."; err.classList.remove("hidden");
+  } finally {
+    btn.disabled = false; btn.textContent = "أرسل العمل";
+  }
+});
+
+/* ===== عداد زيارات وهمي (تجريبي لإثبات جاهزية مكان الشواهد) ===== */
+(function(){
+  let n = 1280;
+  try { n = (parseInt(localStorage.getItem("jeel_visits")) || 1280) + 1; localStorage.setItem("jeel_visits", n); } catch(_) {}
+  document.getElementById("visits").textContent = n.toLocaleString("ar-OM");
+})();
+
+loadWorks(); setInterval(loadWorks, 30000);
+</script>
+</body>
+</html>
