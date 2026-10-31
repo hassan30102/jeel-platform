@@ -160,43 +160,37 @@ footer{background:var(--blue-deep);color:#D6E6F8}
   <div class="max-w-6xl mx-auto px-4 py-10 grid md:grid-cols-3 gap-6 items-center">
     <div><p class="display font-extrabold text-lg text-white">مسابقة سراج عمان</p><p class="text-sm">توظيف الموسوعة العمانية في التعلم</p></div>
     <p class="md:text-center">إشراف: الأستاذ / علي السماخي</p>
-    <p class="md:text-left">عدد الزيارات: <strong id="visits" class="display text-xl" style="color:#F6D98B">0</strong></p>
+    <p class="md:text-left"><button id="adminBtn" type="button" class="text-sm underline" style="color:#D6E6F8">دخول المشرف</button></p>
   </div>
 </footer>
 
 <div id="toast" class="card p-4 font-bold" role="status"></div>
 
 <script>
-/* ===== بيانات المعرض: تُجلب مباشرة من /api/works، وتظهر العينات فقط إذا كان المعرض فارغاً ===== */
-const SAMPLES = [
-  {title:"الأفلاج العمانية: هندسة الماء عبر القرون", team:"فريق رواد الفلج", grade:"الصف العاشر", type:"infographic"},
-  {title:"رحلة اللبان من ظفار إلى العالم", team:"فريق عبق ظفار", grade:"الصف الحادي عشر", type:"video"},
-  {title:"خريطة القلاع والحصون العمانية", team:"فريق حُرّاس التاريخ", grade:"الصف العاشر", type:"map"},
-  {title:"السفينة العمانية وطريق التجارة البحرية", team:"فريق نواخذة المستقبل", grade:"الصف الحادي عشر", type:"report"}
-];
+/* ===== بيانات المعرض: تُجلب مباشرة من /api/works ولا تُعرض أعمال تجريبية ===== */
 const TYPES = {all:"الكل", infographic:"إنفوجرافيك", video:"مقاطع فيديو", map:"خرائط تفاعلية", report:"تقارير تقييم"};
 const TYPE_LABEL = {infographic:"إنفوجرافيك", video:"مقطع فيديو", map:"خريطة تفاعلية", report:"تقرير تقييم"};
 const LOOK = {infographic:["📊","#1E88E5"], video:["🎬","#C8962E"], map:["🗺️","#2E8B6A"], report:["📝","#0B2E5C"]};
-// للمعلم: نقرأ المفتاح مرة واحدة ثم نحذفه من شريط العنوان دون أي تغيير بصري.
-const adminParams = new URLSearchParams(location.search);
-const adminFromUrl = adminParams.get("admin");
-if (adminFromUrl) {
-  try { sessionStorage.setItem("jeel_admin", adminFromUrl); } catch (_) {}
-  adminParams.delete("admin");
-  const cleanQuery = adminParams.toString();
+// للمعلم: زر «دخول المشرف» أسفل الصفحة يطلب المفتاح ويحفظه لهذه الجلسة فقط، ولا يمرّ في الرابط.
+const staleParams = new URLSearchParams(location.search);
+if (staleParams.has("admin")) {
+  staleParams.delete("admin");
+  const cleanQuery = staleParams.toString();
   history.replaceState(null, "", location.pathname + (cleanQuery ? "?" + cleanQuery : "") + location.hash);
 }
-let ADMIN_KEY = adminFromUrl;
-try { ADMIN_KEY = ADMIN_KEY || sessionStorage.getItem("jeel_admin"); } catch (_) {}
-let WORKS = SAMPLES, active = "all";
+let ADMIN_KEY = null;
+try { ADMIN_KEY = sessionStorage.getItem("jeel_admin"); } catch (_) {}
+let WORKS = [], active = "all";
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 
 /* ===== جلب الأعمال (وتحديث تلقائي كل 30 ثانية) ===== */
 async function loadWorks(){
   try {
-    const r = await fetch("/api/works"); if (!r.ok) throw 0;
-    const d = await r.json(); WORKS = d.length ? d : SAMPLES;
-  } catch (_) { WORKS = SAMPLES; }
+    const r = await fetch(ADMIN_KEY ? "/api/works?all=1" : "/api/works", ADMIN_KEY ? {headers:{"x-admin-key": ADMIN_KEY}} : undefined);
+    if (r.status === 401 && ADMIN_KEY) { setAdmin(null); toast("مفتاح المشرف غير صحيح"); return; }
+    if (!r.ok) throw 0;
+    WORKS = await r.json();
+  } catch (_) { /* نُبقي ما عُرض سابقاً عند تعذّر الاتصال */ }
   renderFilters(); renderGrid();
 }
 
@@ -215,14 +209,33 @@ function renderGrid(){
     const [icon, tone] = LOOK[w.type] || LOOK.report;
     const safe = typeof w.link==="string" && w.link.startsWith("https://");
     const open = safe ? `<a class="font-bold text-sm mt-3 inline-block" style="color:var(--blue)" href="${esc(w.link)}" target="_blank" rel="noopener noreferrer">افتح العمل</a>` : "";
-    const del = (ADMIN_KEY && w.id) ? `<button class="text-sm font-bold mr-4" style="color:#D93636" onclick="delWork('${esc(w.id)}')">حذف</button>` : "";
+    const pending = w.status === "pending";
+    const approve = (ADMIN_KEY && w.id && pending) ? `<button class="text-sm font-bold mr-4" style="color:#2E8B6A" onclick="approveWork('${esc(w.id)}')">قبول</button>` : "";
+    const del = (ADMIN_KEY && w.id) ? `${approve}<button class="text-sm font-bold mr-4" style="color:#D93636" onclick="delWork('${esc(w.id)}')">حذف</button>` : "";
+    const pendingBadge = pending ? `<span class="badge" style="background:#FDE8E8;color:#D93636;margin-inline-start:.4rem">قيد المراجعة</span>` : "";
     return `<article class="card work overflow-hidden">
       <div class="thumb" style="background:linear-gradient(135deg,${tone},color-mix(in srgb,${tone} 55%,#000))" aria-hidden="true">${icon}</div>
-      <div class="p-5"><span class="badge">${TYPE_LABEL[w.type] || ""}</span>
+      <div class="p-5"><span class="badge">${TYPE_LABEL[w.type] || ""}</span>${pendingBadge}
         <h3 class="display font-extrabold text-lg mt-2 leading-snug">${esc(w.title)}</h3>
         <p class="muted text-sm mt-1">${esc(w.team)} · ${esc(w.grade)}</p>${open}${del}</div></article>`;
   }).join("") : `<p class="muted">لا توجد أعمال في هذا القسم بعد. كن أول من يشارك.</p>`;
 }
+async function approveWork(id){
+  const r = await fetch("/api/works?id=" + encodeURIComponent(id), {method:"PATCH", headers:{"x-admin-key": ADMIN_KEY}});
+  toast(r.ok ? "تم قبول العمل وظهر في المعرض" : "تعذّر القبول، تحقق من المفتاح"); loadWorks();
+}
+function setAdmin(key){
+  ADMIN_KEY = key;
+  try { key ? sessionStorage.setItem("jeel_admin", key) : sessionStorage.removeItem("jeel_admin"); } catch (_) {}
+  document.getElementById("adminBtn").textContent = key ? "خروج المشرف" : "دخول المشرف";
+  loadWorks();
+}
+document.getElementById("adminBtn").onclick = () => {
+  if (ADMIN_KEY) return setAdmin(null);
+  const k = prompt("مفتاح المشرف:");
+  if (k && k.trim()) setAdmin(k.trim());
+};
+if (ADMIN_KEY) document.getElementById("adminBtn").textContent = "خروج المشرف";
 async function delWork(id){
   if (!confirm("حذف هذا العمل من المعرض؟")) return;
   const r = await fetch("/api/works?id=" + encodeURIComponent(id), {method:"DELETE", headers:{"x-admin-key": ADMIN_KEY}});
@@ -274,10 +287,9 @@ document.getElementById("workForm").addEventListener("submit", async (e) => {
       console.log("وضع التجربة - البيانات الجاهزة للإرسال:", JSON.stringify(payload, null, 2));
       await new Promise(r => setTimeout(r, 700));
     }
-    toast("وصل عملك وظهر في المعرض. شكراً لمشاركتك.");
+    toast("وصل عملك، وسيظهر في المعرض بعد مراجعة المعلم. شكراً لمشاركتك.");
     form.reset();
-    await loadWorks(); active = "all"; renderFilters(); renderGrid();
-    document.getElementById("gallery").scrollIntoView();
+    loadWorks();
   } catch (error) {
     console.error(error);
     err.textContent = error.message && !/^HTTP|Failed|fetch/i.test(error.message) ? error.message : "تعذّر الإرسال. تحقق من الاتصال وحاول مرة أخرى."; err.classList.remove("hidden");
@@ -285,13 +297,6 @@ document.getElementById("workForm").addEventListener("submit", async (e) => {
     btn.disabled = false; btn.textContent = "أرسل العمل";
   }
 });
-
-/* ===== عداد زيارات وهمي (تجريبي لإثبات جاهزية مكان الشواهد) ===== */
-(function(){
-  let n = 1280;
-  try { n = (parseInt(localStorage.getItem("jeel_visits")) || 1280) + 1; localStorage.setItem("jeel_visits", n); } catch(_) {}
-  document.getElementById("visits").textContent = n.toLocaleString("ar-OM");
-})();
 
 loadWorks(); setInterval(loadWorks, 30000);
 </script>

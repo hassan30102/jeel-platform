@@ -1,5 +1,6 @@
 // Cloudflare Pages Function: /api/works
-// GET: آخر 100 عمل، POST: إضافة عمل، DELETE: حذف بمفتاح المشرف.
+// GET: آخر 100 عمل معتمد (ومع ?all=1 وبمفتاح المشرف تظهر الأعمال المنتظرة أيضاً)، POST: إضافة عمل بحالة «قيد المراجعة»،
+// PATCH: اعتماد عمل بمفتاح المشرف، DELETE: حذف بمفتاح المشرف.
 // المتطلبات: KV باسم WORKS_KV، وسر ADMIN_KEY، واختيارياً FORWARD_URL وFORWARD_SECRET.
 
 const TYPE_MAP = {
@@ -21,7 +22,7 @@ const HOSTS = [
 ];
 
 const MAX_BODY_BYTES = 4096;
-const RATE_LIMIT_MAX = 3;
+const RATE_LIMIT_MAX = 10;
 const RATE_LIMIT_WINDOW_SECONDS = 10 * 60;
 
 const SECURITY_HEADERS = {
@@ -97,12 +98,21 @@ function safeSecretEqual(left, right) {
   return diff === 0;
 }
 
-export async function onRequestGet({ env }) {
+function isAdmin(request, env) {
+  return Boolean(env.ADMIN_KEY) && safeSecretEqual(request.headers.get("x-admin-key"), env.ADMIN_KEY);
+}
+
+export async function onRequestGet({ request, env }) {
   if (!env.WORKS_KV) return json({ error: "التخزين غير مهيأ" }, 503);
 
-  const list = await env.WORKS_KV.list({ prefix: "w:", limit: 100 });
+  const wantsAll = new URL(request.url).searchParams.get("all") === "1";
+  if (wantsAll && !isAdmin(request, env)) return json({ error: "غير مصرح" }, 401);
+
+  const list = await env.WORKS_KV.list({ prefix: "w:", limit: 1000 });
   const works = list.keys
     .filter((key) => key.metadata && /^w:\d{13}-[0-9a-f]{6}$/.test(key.name))
+    .filter((key) => wantsAll || key.metadata.status !== "pending")
+    .slice(0, 100)
     .map((key) => ({ id: key.name, ...key.metadata }));
 
   return json(works);
@@ -163,6 +173,7 @@ export async function onRequestPost({ request, env, waitUntil }) {
     grade,
     type,
     link: url.href,
+    status: "pending",
     at: Date.now()
   };
 
@@ -193,13 +204,25 @@ export async function onRequestPost({ request, env, waitUntil }) {
 
 export async function onRequestDelete({ request, env }) {
   if (!env.WORKS_KV) return json({ error: "التخزين غير مهيأ" }, 503);
-  if (!env.ADMIN_KEY || !safeSecretEqual(request.headers.get("x-admin-key"), env.ADMIN_KEY)) {
-    return json({ error: "غير مصرح" }, 401);
-  }
+  if (!isAdmin(request, env)) return json({ error: "غير مصرح" }, 401);
 
   const id = new URL(request.url).searchParams.get("id") || "";
   if (!/^w:\d{13}-[0-9a-f]{6}$/.test(id)) return json({ error: "معرّف غير صحيح" }, 400);
 
   await env.WORKS_KV.delete(id);
+  return json({ ok: true });
+}
+
+export async function onRequestPatch({ request, env }) {
+  if (!env.WORKS_KV) return json({ error: "التخزين غير مهيأ" }, 503);
+  if (!isAdmin(request, env)) return json({ error: "غير مصرح" }, 401);
+
+  const id = new URL(request.url).searchParams.get("id") || "";
+  if (!/^w:\d{13}-[0-9a-f]{6}$/.test(id)) return json({ error: "معرّف غير صحيح" }, 400);
+
+  const { metadata } = await env.WORKS_KV.getWithMetadata(id);
+  if (!metadata) return json({ error: "العمل غير موجود" }, 404);
+
+  await env.WORKS_KV.put(id, "1", { metadata: { ...metadata, status: "approved" } });
   return json({ ok: true });
 }
