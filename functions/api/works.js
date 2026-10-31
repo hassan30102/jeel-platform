@@ -1,6 +1,6 @@
 // Cloudflare Pages Function: /api/works
 // GET: آخر 100 عمل معتمد (ومع ?all=1 وبمفتاح المشرف تظهر الأعمال المنتظرة أيضاً)، POST: إضافة عمل بحالة «قيد المراجعة»،
-// PATCH: اعتماد عمل بمفتاح المشرف، DELETE: حذف بمفتاح المشرف.
+// PATCH: بمفتاح المشرف، ?action=approve (اعتماد، وهو الافتراضي) أو feature / unfeature (تمييز العمل المعتمد)، DELETE: حذف بمفتاح المشرف.
 // المتطلبات: KV باسم WORKS_KV، وسر ADMIN_KEY، واختيارياً FORWARD_URL وFORWARD_SECRET.
 
 const TYPE_MAP = {
@@ -220,9 +220,20 @@ export async function onRequestPatch({ request, env }) {
   const id = new URL(request.url).searchParams.get("id") || "";
   if (!/^w:\d{13}-[0-9a-f]{6}$/.test(id)) return json({ error: "معرّف غير صحيح" }, 400);
 
+  const action = new URL(request.url).searchParams.get("action") || "approve";
+  if (!["approve", "feature", "unfeature"].includes(action)) return json({ error: "إجراء غير صحيح" }, 400);
+
   const { metadata } = await env.WORKS_KV.getWithMetadata(id);
   if (!metadata) return json({ error: "العمل غير موجود" }, 404);
 
-  await env.WORKS_KV.put(id, "1", { metadata: { ...metadata, status: "approved" } });
+  const next = { ...metadata };
+  if (action === "approve") next.status = "approved";
+  if (action === "feature") {
+    if (metadata.status === "pending") return json({ error: "اقبل العمل أولاً ثم ميّزه" }, 409);
+    next.featured = true;
+  }
+  if (action === "unfeature") delete next.featured;
+
+  await env.WORKS_KV.put(id, "1", { metadata: next });
   return json({ ok: true });
 }

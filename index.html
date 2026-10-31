@@ -58,7 +58,9 @@ h1,h2,h3,.display{font-family:'Cairo','Tajawal',sans-serif}
 /* ===== 4) المعرض ===== */
 .chip{padding:.45rem 1.2rem;border-radius:999px;border:1px solid var(--line);background:var(--surface);font-weight:700;color:var(--muted);cursor:pointer;transition:.2s}
 .chip[aria-pressed="true"]{background:var(--blue-deep);color:#fff;border-color:var(--blue-deep)}
-.thumb{height:160px;border-radius:14px 14px 0 0;display:flex;align-items:center;justify-content:center;font-size:3rem}
+.thumb{position:relative;overflow:hidden;height:160px;border-radius:14px 14px 0 0;display:flex;align-items:center;justify-content:center;font-size:3rem}
+.thumb img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.work.featured{border-color:var(--gold);box-shadow:0 6px 24px rgba(200,150,46,.35)}
 .badge{font-size:.8rem;font-weight:700;padding:.1rem .7rem;border-radius:999px;background:var(--gold-soft);color:var(--gold)}
 .work{transition:transform .2s, box-shadow .2s}
 .work:hover{transform:translateY(-4px)}
@@ -121,6 +123,10 @@ footer{background:var(--blue-deep);color:#D6E6F8}
 <section id="gallery" class="max-w-6xl mx-auto px-4 py-16">
   <h2 class="display font-extrabold text-3xl">معرض الشواهد والأعمال</h2>
   <p class="muted mt-1">أعمال فرق بحثية طلابية أعادت صياغة معرفة الموسوعة العمانية بصرياً.</p>
+  <div class="field grid sm:grid-cols-[1fr_220px] gap-3 mt-6">
+    <input id="q" type="search" placeholder="ابحث بعنوان العمل أو اسم الفريق" aria-label="بحث في الأعمال">
+    <select id="gradeFilter" aria-label="تصفية بالصف"><option value="">كل الصفوف</option><option>الصف العاشر</option><option>الصف الحادي عشر</option><option>الصف الثاني عشر</option></select>
+  </div>
   <div class="flex flex-wrap gap-2 my-6" id="filters" role="group" aria-label="تصفية الأعمال"></div>
   <div id="grid" class="grid sm:grid-cols-2 lg:grid-cols-3 gap-6" aria-live="polite"></div>
 </section>
@@ -203,22 +209,53 @@ function renderFilters(){
   }).join("");
   box.querySelectorAll("button").forEach(b => b.onclick = () => { active = b.dataset.k; renderFilters(); renderGrid(); });
 }
+/* معاينة العمل: يوتيوب ودرايف فقط، وإن تعذّر تحميلها تبقى الأيقونة */
+function thumbFor(link){
+  try {
+    const u = new URL(link), h = u.hostname.replace(/^www\./, "");
+    let id = null;
+    if (h === "youtu.be") id = u.pathname.slice(1).split("/")[0];
+    else if (h.endsWith("youtube.com")) id = u.searchParams.get("v") || (u.pathname.match(/^\/(?:embed|shorts|live)\/([\w-]{11})/) || [])[1];
+    if (id && /^[\w-]{11}$/.test(id)) return "https://i.ytimg.com/vi/" + id + "/hqdefault.jpg";
+    if (h === "drive.google.com") {
+      const d = (u.pathname.match(/\/d\/([\w-]+)/) || [])[1] || u.searchParams.get("id");
+      if (d && /^[\w-]+$/.test(d)) return "https://drive.google.com/thumbnail?id=" + d + "&sz=w600";
+    }
+  } catch (_) {}
+  return null;
+}
 function renderGrid(){
-  const list = WORKS.filter(w => active==="all" || w.type===active);
+  const q = (document.getElementById("q").value || "").trim().toLowerCase();
+  const g = document.getElementById("gradeFilter").value;
+  const list = WORKS
+    .filter(w => active==="all" || w.type===active)
+    .filter(w => !g || w.grade===g)
+    .filter(w => !q || (String(w.title)+" "+String(w.team)).toLowerCase().includes(q))
+    .sort((x, y) => (y.featured ? 1 : 0) - (x.featured ? 1 : 0));
   document.getElementById("grid").innerHTML = list.length ? list.map(w => {
     const [icon, tone] = LOOK[w.type] || LOOK.report;
     const safe = typeof w.link==="string" && w.link.startsWith("https://");
     const open = safe ? `<a class="font-bold text-sm mt-3 inline-block" style="color:var(--blue)" href="${esc(w.link)}" target="_blank" rel="noopener noreferrer">افتح العمل</a>` : "";
     const pending = w.status === "pending";
     const approve = (ADMIN_KEY && w.id && pending) ? `<button class="text-sm font-bold mr-4" style="color:#2E8B6A" onclick="approveWork('${esc(w.id)}')">قبول</button>` : "";
-    const del = (ADMIN_KEY && w.id) ? `${approve}<button class="text-sm font-bold mr-4" style="color:#D93636" onclick="delWork('${esc(w.id)}')">حذف</button>` : "";
+    const feature = (ADMIN_KEY && w.id && !pending) ? `<button class="text-sm font-bold mr-4" style="color:var(--gold)" onclick="featureWork('${esc(w.id)}', ${w.featured ? "false" : "true"})">${w.featured ? "إلغاء التمييز" : "تمييز"}</button>` : "";
+    const del = (ADMIN_KEY && w.id) ? `${approve}${feature}<button class="text-sm font-bold mr-4" style="color:#D93636" onclick="delWork('${esc(w.id)}')">حذف</button>` : "";
     const pendingBadge = pending ? `<span class="badge" style="background:#FDE8E8;color:#D93636;margin-inline-start:.4rem">قيد المراجعة</span>` : "";
-    return `<article class="card work overflow-hidden">
-      <div class="thumb" style="background:linear-gradient(135deg,${tone},color-mix(in srgb,${tone} 55%,#000))" aria-hidden="true">${icon}</div>
-      <div class="p-5"><span class="badge">${TYPE_LABEL[w.type] || ""}</span>${pendingBadge}
+    const featuredBadge = w.featured ? `<span class="badge" style="background:var(--gold);color:#1B1403;margin-inline-start:.4rem">⭐ عمل مميز</span>` : "";
+    const pic = safe ? thumbFor(w.link) : null;
+    const img = pic ? `<img src="${esc(pic)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()">` : "";
+    return `<article class="card work overflow-hidden${w.featured ? " featured" : ""}">
+      <div class="thumb" style="background:linear-gradient(135deg,${tone},color-mix(in srgb,${tone} 55%,#000))" aria-hidden="true">${icon}${img}</div>
+      <div class="p-5"><span class="badge">${TYPE_LABEL[w.type] || ""}</span>${featuredBadge}${pendingBadge}
         <h3 class="display font-extrabold text-lg mt-2 leading-snug">${esc(w.title)}</h3>
         <p class="muted text-sm mt-1">${esc(w.team)} · ${esc(w.grade)}</p>${open}${del}</div></article>`;
-  }).join("") : `<p class="muted">لا توجد أعمال في هذا القسم بعد. كن أول من يشارك.</p>`;
+  }).join("") : `<p class="muted">لا توجد أعمال مطابقة. جرّب تغيير البحث أو التصفية، أو كن أول من يشارك.</p>`;
+}
+document.getElementById("q").addEventListener("input", renderGrid);
+document.getElementById("gradeFilter").addEventListener("change", renderGrid);
+async function featureWork(id, on){
+  const r = await fetch("/api/works?id=" + encodeURIComponent(id) + "&action=" + (on ? "feature" : "unfeature"), {method:"PATCH", headers:{"x-admin-key": ADMIN_KEY}});
+  toast(r.ok ? (on ? "تم تمييز العمل وسيظهر في الأعلى" : "أُلغي تمييز العمل") : "تعذّر التنفيذ، تحقق من المفتاح"); loadWorks();
 }
 async function approveWork(id){
   const r = await fetch("/api/works?id=" + encodeURIComponent(id), {method:"PATCH", headers:{"x-admin-key": ADMIN_KEY}});
